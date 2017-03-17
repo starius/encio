@@ -28,7 +28,7 @@ type StoreFile interface {
 // which supports only appending to the end.
 // Content of a virtual plaintext file is mapped by Frontend to
 // an encrypted file. Ciphertext is splitted to blocks of size
-// 4096 bytes (TODO: make this an argument of NewAppender).
+// 4096 bytes.
 // Plaintext block size is less than ciphertext block size by
 // aead.Overhead(). Plaintext block is encrypted and authenticated
 // using aead and written to the corresponding ciphertext block.
@@ -47,8 +47,7 @@ type Frontend struct {
 }
 
 // NewAppender creates Frontend from aead and ciphertext file.
-func NewAppender(aead cipher.AEAD, backend StoreFile) *Frontend {
-	cipherBlockSize := 4096
+func NewAppender(aead cipher.AEAD, backend StoreFile, cipherBlockSize int) *Frontend {
 	plainBlockSize := cipherBlockSize - aead.Overhead()
 	return &Frontend{
 		aead:            aead,

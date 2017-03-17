@@ -14,7 +14,7 @@ func setupDummies() (aead cipher.AEAD, backend, frontend StoreFile) {
 		overheadSize: 32,
 		nonceSize:    16,
 	}
-	frontend = NewAppender(aead, backend)
+	frontend = NewAppender(aead, backend, 4096)
 	return aead, backend, frontend
 }
 
