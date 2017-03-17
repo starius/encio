@@ -14,7 +14,9 @@ const (
 	usedLen = 2
 )
 
-// For https://github.com/steveyen/gkvlite
+// StoreFile is abstraction of a file with random access.
+// It is implemented by os.File and it is used by
+// https://github.com/steveyen/gkvlite
 type StoreFile interface {
 	io.ReaderAt
 	io.WriterAt
@@ -22,6 +24,19 @@ type StoreFile interface {
 	Truncate(size int64) error
 }
 
+// Frontend is an encrypted implementation of StoreFile,
+// which supports only appending to the end.
+// Content of a virtual plaintext file is mapped by Frontend to
+// an encrypted file. Ciphertext is splitted to blocks of size
+// 4096 bytes (TODO: make this an argument of NewAppender).
+// Plaintext block size is less than ciphertext block size by
+// aead.Overhead(). Plaintext block is encrypted and authenticated
+// using aead and written to the corresponding ciphertext block.
+// Nonce of aead is a one-to-one function of a tuple of the block
+// index and of its size. Only last block and change and only by
+// growing it size, so a nonce value is never reused.
+// Frontend provides concurrent access of multiple readers
+// xor a signle writer.
 type Frontend struct {
 	aead    cipher.AEAD
 	backend StoreFile
@@ -31,6 +46,7 @@ type Frontend struct {
 	m sync.RWMutex
 }
 
+// NewAppender creates Frontend from aead and ciphertext file.
 func NewAppender(aead cipher.AEAD, backend StoreFile) *Frontend {
 	cipherBlockSize := 4096
 	plainBlockSize := cipherBlockSize - aead.Overhead()
@@ -100,6 +116,7 @@ func getBlock(buffer []byte, i, blockSize int64) []byte {
 	return buffer[begin:end]
 }
 
+// ReadAt reads len(b) bytes from the file starting at byte offset off.
 func (f *Frontend) ReadAt(p []byte, off int64) (int, error) {
 	f.m.RLock()
 	defer f.m.RUnlock()
@@ -155,6 +172,7 @@ func (f *Frontend) readAt(p0 []byte, off int64) (int, error) {
 	return len(p0), nil
 }
 
+// WriteAt writes len(b) bytes to the File starting at byte offset off.
 func (f *Frontend) WriteAt(p []byte, off int64) (int, error) {
 	f.m.Lock()
 	defer f.m.Unlock()
@@ -247,6 +265,7 @@ func (f fileInfo) Sys() interface{} {
 	return nil
 }
 
+// Stat returns the FileInfo structure describing file.
 func (f *Frontend) Stat() (os.FileInfo, error) {
 	p, _, stat, err := f.getSizes()
 	if err != nil {
@@ -279,6 +298,8 @@ func (f *Frontend) getSizes() (p, c int64, stat os.FileInfo, err error) {
 	return p, cipherLength, bStat, nil
 }
 
+// Truncate changes the size of the file.
+// Only grow operation is supported.
 func (f *Frontend) Truncate(size int64) error {
 	p, _, _, err := f.getSizes()
 	if err != nil {
