@@ -5,13 +5,13 @@ import (
 	"os"
 )
 
-// DummyFile is in-memory implementation of StoreFile.
-type DummyFile struct {
+// dummyFile is in-memory implementation of StoreFile.
+type dummyFile struct {
 	buffer [1024 * 1024]byte
 	size   int64
 }
 
-func (d *DummyFile) ReadAt(p []byte, off int64) (int, error) {
+func (d *dummyFile) ReadAt(p []byte, off int64) (int, error) {
 	if off < 0 {
 		return 0, fmt.Errorf("reading with negative offset")
 	}
@@ -23,7 +23,7 @@ func (d *DummyFile) ReadAt(p []byte, off int64) (int, error) {
 	return len(p), nil
 }
 
-func (d *DummyFile) WriteAt(p []byte, off int64) (int, error) {
+func (d *dummyFile) WriteAt(p []byte, off int64) (int, error) {
 	if off < 0 {
 		return 0, fmt.Errorf("writing with negative offset")
 	}
@@ -38,13 +38,13 @@ func (d *DummyFile) WriteAt(p []byte, off int64) (int, error) {
 	return len(p), nil
 }
 
-func (d *DummyFile) Stat() (os.FileInfo, error) {
-	return FileInfo{
+func (d *dummyFile) Stat() (os.FileInfo, error) {
+	return fileInfo{
 		size: d.size,
 	}, nil
 }
 
-func (d *DummyFile) Truncate(size int64) error {
+func (d *dummyFile) Truncate(size int64) error {
 	if size < 0 {
 		return fmt.Errorf("truncating with negative size")
 	}

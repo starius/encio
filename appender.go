@@ -217,33 +217,33 @@ func (f *Frontend) writeAt(p []byte, off int64) (int, error) {
 	return origN, nil
 }
 
-type FileInfo struct {
+type fileInfo struct {
 	size    int64
 	mode    os.FileMode
 	modTime time.Time
 }
 
-func (f FileInfo) Name() string {
+func (f fileInfo) Name() string {
 	return "file"
 }
 
-func (f FileInfo) Size() int64 {
+func (f fileInfo) Size() int64 {
 	return f.size
 }
 
-func (f FileInfo) Mode() os.FileMode {
+func (f fileInfo) Mode() os.FileMode {
 	return f.mode
 }
 
-func (f FileInfo) ModTime() time.Time {
+func (f fileInfo) ModTime() time.Time {
 	return f.modTime
 }
 
-func (f FileInfo) IsDir() bool {
+func (f fileInfo) IsDir() bool {
 	return false
 }
 
-func (f FileInfo) Sys() interface{} {
+func (f fileInfo) Sys() interface{} {
 	return nil
 }
 
@@ -252,7 +252,7 @@ func (f *Frontend) Stat() (os.FileInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get size: %s", err)
 	}
-	return FileInfo{
+	return fileInfo{
 		size:    p,
 		mode:    stat.Mode(),
 		modTime: stat.ModTime(),

@@ -5,22 +5,22 @@ import (
 	"fmt"
 )
 
-// DummyAEAD is noop implementation of cipher.AEAD used in tests.
+// dummyAEAD is noop implementation of cipher.AEAD used in tests.
 // Ciphertext = overhead + plaintext;
 // overhead is nonce padded by zeros.
-type DummyAEAD struct {
+type dummyAEAD struct {
 	nonceSize, overheadSize int
 }
 
-func (d DummyAEAD) NonceSize() int {
+func (d dummyAEAD) NonceSize() int {
 	return d.nonceSize
 }
 
-func (d DummyAEAD) Overhead() int {
+func (d dummyAEAD) Overhead() int {
 	return d.overheadSize
 }
 
-func (d DummyAEAD) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
+func (d dummyAEAD) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
 	if additionalData != nil {
 		panic("additionalData is not supported")
 	}
@@ -37,7 +37,7 @@ func (d DummyAEAD) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
 	return dst
 }
 
-func (d DummyAEAD) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
+func (d dummyAEAD) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
 	if additionalData != nil {
 		panic("additionalData is not supported")
 	}

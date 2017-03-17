@@ -9,8 +9,8 @@ import (
 )
 
 func setupDummies() (aead cipher.AEAD, backend, frontend StoreFile) {
-	backend = &DummyFile{}
-	aead = DummyAEAD{
+	backend = &dummyFile{}
+	aead = dummyAEAD{
 		overheadSize: 32,
 		nonceSize:    16,
 	}
