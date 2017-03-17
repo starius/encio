@@ -1,0 +1,14 @@
+clone_folder: c:\gopath\src\github.com\starius\encio
+
+environment:
+  GOPATH: c:\gopath
+
+install:
+  - echo %PATH%
+  - echo %GOPATH%
+  - go version
+  - go env
+
+build_script:
+  - go get -t github.com/starius/encio
+  - go test github.com/starius/encio
