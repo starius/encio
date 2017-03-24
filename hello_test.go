@@ -1,4 +1,4 @@
-package main
+package encio
 
 import (
 	"crypto/aes"
@@ -7,11 +7,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-
-	"github.com/starius/encio"
 )
 
-func main() {
+func ExampleHello() {
 	block, err := aes.NewCipher(make([]byte, 16))
 	if err != nil {
 		log.Fatalf("Failed to make AES: %s", err)
@@ -29,7 +27,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to open backend: %s", err)
 	}
-	frontend := encio.NewAppender(aead, backend, 4096)
+	frontend := NewAppender(aead, backend, 4096)
 	_, err = frontend.WriteAt([]byte("Hello"), 0)
 	if err != nil {
 		log.Fatalf("Failed to write: %s", err)
@@ -44,4 +42,5 @@ func main() {
 		log.Fatalf("Failed to write: %s", err)
 	}
 	fmt.Println(string(b))
+	// Output: Hello world
 }
