@@ -12,5 +12,5 @@ os:
   - osx
 
 script:
-  - go get -t github.com/starius/encio
+  - go get -t github.com/starius/encio/...
   - go test github.com/starius/encio
