@@ -119,7 +119,7 @@ func main() {
 			signal := <-c
 			fmt.Printf("Caught %s, unmount %s.\n", signal, *mountpoint)
 			if err := fuse.Unmount(*mountpoint); err != nil {
-				fmt.Printf("Failed tp unmount: %s.\n", err)
+				fmt.Printf("Failed to unmount: %s.\n", err)
 			}
 			fmt.Printf("Successfully closed %s, exiting.\n", *store)
 		}()
