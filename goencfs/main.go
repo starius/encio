@@ -38,16 +38,15 @@ func NewAEAD(key []byte) (cipher.AEAD, error) {
 
 var (
 	store      = flag.String("store", "", "Encrypted store file")
-	newStore   = flag.String("new-store", "", "Write to new place")
 	mountpoint = flag.String("mountpoint", "", "Where to mount")
 )
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano()) // FIXME
 	flag.Parse()
-	if !(*store != "" && (*mountpoint != "" || *newStore != "")) {
+	if *store == "" || *mountpoint == "" {
 		flag.PrintDefaults()
-		log.Fatal("Provide -store and (-mountpoint or -new-store)")
+		log.Fatal("Provide -store and -mountpoint")
 	}
 	backend, err := os.OpenFile(*store, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
@@ -69,69 +68,41 @@ func main() {
 		log.Fatalf("Failed to open GKV: %s", err)
 	}
 	defer kvStore.Close()
-	if *newStore != "" {
-		// Copy the FS to other file to compact and change password.
-		newBackend, err := os.OpenFile(
-			*newStore, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600,
-		)
-		if err != nil {
-			log.Fatalf("Failed to open store file: %s", err)
+	defer kvStore.Flush()
+	const buddyfs string = "BuddyFS"
+	col := kvStore.GetCollection(buddyfs)
+	if col == nil {
+		col = kvStore.SetCollection(buddyfs, nil)
+	}
+	defer col.Write()
+	buddyFS := gobuddyfs.NewGKVStore(col, kvStore)
+	mp, err := fuse.Mount(
+		*mountpoint, fuse.FSName("gobuddyfs"),
+		fuse.Subtype("buddyfs"), fuse.LocalVolume(),
+	)
+	if err != nil {
+		log.Fatalf("Failed to mount FUSE: %s", err)
+	}
+	defer mp.Close()
+	// Handle signals - close file.
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		signal := <-c
+		fmt.Printf("Caught %s, unmount %s.\n", signal, *mountpoint)
+		if err := fuse.Unmount(*mountpoint); err != nil {
+			fmt.Printf("Failed to unmount: %s.\n", err)
 		}
-		defer newBackend.Close()
-		fmt.Printf("Enter password for %s: ", *newStore)
-		newPassword, err := gopass.GetPasswdMasked()
-		if err != nil {
-			log.Fatalf("Failed to input new password: %s", err)
-		}
-		newAead, err := NewAEAD(newPassword)
-		if err != nil {
-			log.Fatalf("Failed to make AEAD: %s", err)
-		}
-		newFrontend := encio.NewAppender(newAead, newBackend, 4096)
-		flushEvery := 10000
-		_, err = kvStore.CopyTo(newFrontend, flushEvery)
-		if err != nil {
-			log.Fatalf(
-				"Failed to copy %s to %s: %s", *store, *newStore, err,
-			)
-		}
-	} else {
-		defer kvStore.Flush()
-		const buddyfs string = "BuddyFS"
-		col := kvStore.GetCollection(buddyfs)
-		if col == nil {
-			col = kvStore.SetCollection(buddyfs, nil)
-		}
-		defer col.Write()
-		buddyFS := gobuddyfs.NewGKVStore(col, kvStore)
-		mp, err := fuse.Mount(
-			*mountpoint, fuse.FSName("gobuddyfs"),
-			fuse.Subtype("buddyfs"), fuse.LocalVolume(),
-		)
-		if err != nil {
-			log.Fatalf("Failed to mount FUSE: %s", err)
-		}
-		defer mp.Close()
-		// Handle signals - close file.
-		c := make(chan os.Signal, 2)
-		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-		go func() {
-			signal := <-c
-			fmt.Printf("Caught %s, unmount %s.\n", signal, *mountpoint)
-			if err := fuse.Unmount(*mountpoint); err != nil {
-				fmt.Printf("Failed to unmount: %s.\n", err)
-			}
-			fmt.Printf("Successfully closed %s, exiting.\n", *store)
-		}()
-		fmt.Printf("Mounting file %s to %s...\n", *store, *mountpoint)
-		err = fs.Serve(mp, gobuddyfs.NewBuddyFS(buddyFS))
-		if err != nil {
-			log.Fatal(err)
-		}
-		// check if the mount process has an error to report
-		<-mp.Ready
-		if err := mp.MountError; err != nil {
-			log.Fatal(err)
-		}
+		fmt.Printf("Successfully closed %s, exiting.\n", *store)
+	}()
+	fmt.Printf("Mounting file %s to %s...\n", *store, *mountpoint)
+	err = fs.Serve(mp, gobuddyfs.NewBuddyFS(buddyFS))
+	if err != nil {
+		log.Fatal(err)
+	}
+	// check if the mount process has an error to report
+	<-mp.Ready
+	if err := mp.MountError; err != nil {
+		log.Fatal(err)
 	}
 }
