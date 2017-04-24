@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/buddyfs/gobuddyfs"
 	"github.com/howeyc/gopass"
 	"github.com/starius/encio"
+	"github.com/starius/flock"
 	"github.com/steveyen/gkvlite"
 )
 
@@ -33,8 +35,6 @@ func NewAEAD(key []byte) (cipher.AEAD, error) {
 	}
 	return aead, nil
 }
-
-// TODO flock
 
 var (
 	store      = flag.String("store", "", "Encrypted store file")
@@ -53,6 +53,9 @@ func main() {
 		log.Fatalf("Failed to open store file: %s", err)
 	}
 	defer backend.Close()
+	if err := flock.LockFile(backend); err != nil {
+		log.Fatalf("Failed to lock %s: %s.\n", *store, err)
+	}
 	fmt.Printf("Enter password for %s: ", *store)
 	password, err := gopass.GetPasswdMasked()
 	if err != nil {
@@ -87,13 +90,23 @@ func main() {
 	// Handle signals - close file.
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	var wg sync.WaitGroup
 	go func() {
+		wg.Add(1)
+		defer wg.Done()
 		signal := <-c
-		fmt.Printf("Caught %s, unmount %s.\n", signal, *mountpoint)
+		fmt.Printf("Caught %s.\n", signal)
+		fmt.Printf("Unmounting %s.\n", *mountpoint)
 		if err := fuse.Unmount(*mountpoint); err != nil {
 			fmt.Printf("Failed to unmount: %s.\n", err)
 		}
-		fmt.Printf("Successfully closed %s, exiting.\n", *store)
+		fmt.Printf("Successfully unmount %s.\n", *mountpoint)
+		fmt.Printf("Unlocking %s.\n", *store)
+		if err := flock.UnlockFile(backend); err != nil {
+			fmt.Printf("Failed to unlock %s: %s.\n", *store, err)
+		}
+		fmt.Printf("Successfully unlock %s.\n", *store)
+		fmt.Printf("Exiting.\n")
 	}()
 	fmt.Printf("Mounting file %s to %s...\n", *store, *mountpoint)
 	err = fs.Serve(mp, gobuddyfs.NewBuddyFS(buddyFS))
@@ -105,4 +118,5 @@ func main() {
 	if err := mp.MountError; err != nil {
 		log.Fatal(err)
 	}
+	wg.Wait()
 }
