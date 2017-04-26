@@ -16,10 +16,10 @@ import (
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
-	"github.com/buddyfs/gobuddyfs"
 	"github.com/howeyc/gopass"
 	"github.com/starius/encio"
 	"github.com/starius/flock"
+	"github.com/starius/gobuddyfs"
 	"github.com/steveyen/gkvlite"
 )
 
