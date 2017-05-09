@@ -99,13 +99,15 @@ func main() {
 		fmt.Printf("Unmounting %s.\n", *mountpoint)
 		if err := fuse.Unmount(*mountpoint); err != nil {
 			fmt.Printf("Failed to unmount: %s.\n", err)
+		} else {
+			fmt.Printf("Successfully unmount %s.\n", *mountpoint)
 		}
-		fmt.Printf("Successfully unmount %s.\n", *mountpoint)
 		fmt.Printf("Unlocking %s.\n", *store)
 		if err := flock.UnlockFile(backend); err != nil {
 			fmt.Printf("Failed to unlock %s: %s.\n", *store, err)
+		} else {
+			fmt.Printf("Successfully unlock %s.\n", *store)
 		}
-		fmt.Printf("Successfully unlock %s.\n", *store)
 		fmt.Printf("Exiting.\n")
 	}()
 	fmt.Printf("Mounting file %s to %s...\n", *store, *mountpoint)
